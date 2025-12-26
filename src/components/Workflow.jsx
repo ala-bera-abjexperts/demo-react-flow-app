@@ -8,10 +8,13 @@ import {
   Position,
   Handle,
   useKeyPress,
+  useEdgesState,
 } from "@xyflow/react";
 import "@xyflow/react/dist/style.css";
 import { useEffect } from "react";
 import { getStraightPath } from "@xyflow/react";
+
+const customEdgeType = { customEdge: CustomEdge };
 
 const CustomNode = ({ data }) => (
   <div
@@ -61,6 +64,8 @@ const FlowInner = () => {
       Number(localStorage.getItem("currentIndex"))
     ) || []
   );
+
+  const [edges, setEdges, onEdgesChange] = useEdgesState([]);
   const { screenToFlowPosition } = useReactFlow(); // Needs ReactFlowProvider
   const cmdAndZPress = useKeyPress("Meta+z", "Strg+z");
   const cmdAndYPress = useKeyPress("Meta+y", "Strg+y");
@@ -101,6 +106,7 @@ const FlowInner = () => {
 
       setNodes((nds) => {
         const node = nds.concat(newNode);
+        localStorage.setItem("currentIndex", node.length);
         localStorage.setItem("nodes", JSON.stringify(node, null, 2));
         return node;
       });
@@ -108,9 +114,10 @@ const FlowInner = () => {
     [nodes, screenToFlowPosition, setNodes]
   );
 
-  const onNodeClick = (event) => {
-    console.log(event);
-  };
+  // const onConnect = useCallback(
+  //   (connection) => setEdges([...edges, connection]),
+  //   []
+  // );
 
   return (
     <div
@@ -121,8 +128,11 @@ const FlowInner = () => {
       {/* Ensure 100vh here */}
       <ReactFlow
         nodes={nodes}
-        onNodeClick={onNodeClick}
+        edges={edges}
+        // onConnect={onConnect}
+        edgeTypes={customEdgeType}
         onNodesChange={onNodesChange}
+        onEdgesChange={onEdgesChange}
         onPaneClick={onPaneClick} // Native React Flow prop for clicking the background
         nodeTypes={nodeTypes}
         fitView
