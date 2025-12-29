@@ -1,15 +1,11 @@
-import { DragAndDrop } from "./components/DragAndDrop";
-import { Flow } from "./components/Flow";
-
-import { WorkFlow } from "./components/Workflow";
+import { WorkflowCanvas } from "./components/WorkflowCanvas";
+import { TooltipProvider } from "./components/ui/tooltip";
 
 function App() {
   return (
-    <div style={{ width: "100vw", height: "100vh" }}>
-      {/* <Flow /> */}
-      {/* <WorkFlow /> */}
-      <DragAndDrop />
-    </div>
+    <TooltipProvider>
+      <WorkflowCanvas />
+    </TooltipProvider>
   );
 }
 

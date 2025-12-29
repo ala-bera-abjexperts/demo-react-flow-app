@@ -1,3 +1,4 @@
+@import "tailwindcss";
 @custom-variant dark (&:is(.dark *));
 
 :root {
@@ -40,11 +41,24 @@
   --sidebar-border: oklch(0.922 0 0);
   --sidebar-ring: oklch(0.708 0 0);
 
-  /* Custom workflow variables */
-  --node-blue: oklch(0.6 0.22 250);
-  --node-purple: oklch(0.6 0.25 290);
-  --node-green: oklch(0.65 0.22 150);
-  --glow-intensity: 0.5;
+  /* Custom workflow variables - Modern minimal palette */
+  --bg-base: #09090b;
+  --bg-surface: #18181b;
+  --bg-elevated: #27272a;
+  --border-subtle: #27272a;
+  --border-muted: #3f3f46;
+  --text-primary: #fafafa;
+  --text-secondary: #a1a1aa;
+  --text-muted: #71717a;
+  --accent: #6366f1;
+  --accent-hover: #4f46e5;
+  --accent-muted: rgba(99, 102, 241, 0.15);
+  --node-blue: #3b82f6;
+  --node-purple: #a855f7;
+  --node-green: #22c55e;
+  --duration-fast: 150ms;
+  --duration-normal: 200ms;
+  --duration-slow: 300ms;
 }
 
 .dark {
@@ -83,11 +97,24 @@
   --sidebar-border: oklch(0.269 0 0);
   --sidebar-ring: oklch(0.439 0 0);
 
-  /* Custom workflow variables */
-  --node-blue: oklch(0.65 0.25 250);
-  --node-purple: oklch(0.65 0.28 290);
-  --node-green: oklch(0.7 0.25 150);
-  --glow-intensity: 0.8;
+  /* Custom workflow variables - Modern minimal palette (dark) */
+  --bg-base: #09090b;
+  --bg-surface: #18181b;
+  --bg-elevated: #27272a;
+  --border-subtle: #27272a;
+  --border-muted: #3f3f46;
+  --text-primary: #fafafa;
+  --text-secondary: #a1a1aa;
+  --text-muted: #71717a;
+  --accent: #6366f1;
+  --accent-hover: #4f46e5;
+  --accent-muted: rgba(99, 102, 241, 0.15);
+  --node-blue: #3b82f6;
+  --node-purple: #a855f7;
+  --node-green: #22c55e;
+  --duration-fast: 150ms;
+  --duration-normal: 200ms;
+  --duration-slow: 300ms;
 }
 
 @theme inline {
@@ -196,64 +223,241 @@ html {
   font-size: var(--font-size);
 }
 
-/* Custom Animations */
-@keyframes shimmer {
-  0% {
-    background-position: -200% center;
-  }
-  100% {
-    background-position: 200% center;
-  }
+/* Custom Animations - Minimal, fast interactions */
+
+/* Subtle pulse for running states only */
+@keyframes pulse-subtle {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.5; }
 }
 
-@keyframes float {
-  0%,
-  100% {
-    transform: translateY(0px);
-  }
-  50% {
-    transform: translateY(-4px);
-  }
+/* Fade in for tooltips/menus */
+@keyframes fade-in {
+  from { opacity: 0; transform: translateY(-4px); }
+  to { opacity: 1; transform: translateY(0); }
 }
 
-@keyframes pulse-glow {
-  0%,
-  100% {
-    opacity: 1;
-    filter: blur(8px);
-  }
-  50% {
-    opacity: 0.6;
-    filter: blur(12px);
-  }
+/* Spinner for loading states */
+@keyframes spin {
+  to { transform: rotate(360deg); }
 }
 
-@keyframes gradient-shift {
-  0% {
-    background-position: 0% 50%;
-  }
-  50% {
-    background-position: 100% 50%;
-  }
-  100% {
-    background-position: 0% 50%;
-  }
+.animate-pulse-subtle {
+  animation: pulse-subtle 1.5s ease-in-out infinite;
 }
 
-.animate-shimmer {
-  animation: shimmer 3s linear infinite;
-  background-size: 200% 100%;
+.animate-fade-in {
+  animation: fade-in 150ms ease-out;
 }
 
-.animate-float {
-  animation: float 3s ease-in-out infinite;
+.animate-spin {
+  animation: spin 1s linear infinite;
 }
 
-.animate-pulse-glow {
-  animation: pulse-glow 2s ease-in-out infinite;
+/* Fast transition utilities */
+.transition-fast {
+  transition-duration: 150ms;
 }
 
-.animate-gradient {
-  animation: gradient-shift 8s ease infinite;
-  background-size: 200% 200%;
+.transition-normal {
+  transition-duration: 200ms;
+}
+
+/* Node shadow utilities */
+.shadow-node {
+  box-shadow: 0 1px 3px rgba(0,0,0,0.5), 0 1px 2px rgba(0,0,0,0.3);
+}
+
+.shadow-node-hover {
+  box-shadow: 0 4px 12px rgba(0,0,0,0.4), 0 2px 4px rgba(0,0,0,0.3);
+}
+
+.shadow-node-selected {
+  box-shadow: 0 0 0 2px var(--accent), 0 4px 12px rgba(0,0,0,0.4);
+}
+
+/* React Flow Professional Enhancements */
+
+/* Smooth node movements with spring-like easing */
+.react-flow__node {
+  transition: transform 200ms cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* Selection box styling */
+.react-flow__selection {
+  background: rgba(99, 102, 241, 0.1);
+  border: 2px solid rgba(99, 102, 241, 0.5);
+  border-radius: 4px;
+}
+
+/* Grid snap visual feedback */
+.react-flow__pane[data-snap="true"] {
+  cursor: crosshair;
+}
+
+/* Better edge animations and hover effects */
+.react-flow__edge-path {
+  transition: stroke-width 150ms ease, stroke 150ms ease;
+}
+
+.react-flow__edge:hover .react-flow__edge-path {
+  stroke-width: 3 !important;
+}
+
+.react-flow__edge.selected .react-flow__edge-path {
+  stroke: #6366f1 !important;
+  stroke-width: 3 !important;
+}
+
+/* Edge labels */
+.react-flow__edge-text {
+  font-size: 10px;
+  fill: #a1a1aa;
+}
+
+/* Connection line styling */
+.react-flow__connection-path {
+  stroke: #6366f1;
+  stroke-width: 2;
+  opacity: 0.8;
+}
+
+/* Handle styling */
+.react-flow__handle {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  border: 2px solid #18181b;
+  background: #6366f1;
+  transition: all 150ms ease;
+}
+
+.react-flow__handle:hover {
+  width: 14px;
+  height: 14px;
+  border-width: 3px;
+  box-shadow: 0 0 0 4px rgba(99, 102, 241, 0.2);
+}
+
+.react-flow__handle-connecting {
+  background: #4f46e5;
+  box-shadow: 0 0 0 6px rgba(99, 102, 241, 0.3);
+}
+
+/* MiniMap professional styling */
+.react-flow__minimap {
+  background: #18181b !important;
+  border: 1px solid #27272a !important;
+}
+
+.react-flow__minimap-mask {
+  fill: rgba(99, 102, 241, 0.15);
+  stroke: rgba(99, 102, 241, 0.4);
+  stroke-width: 2;
+}
+
+.react-flow__minimap-node {
+  transition: fill 150ms ease;
+}
+
+/* Controls styling */
+.react-flow__controls {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.react-flow__controls-button {
+  width: 32px;
+  height: 32px;
+  border: none;
+  background: transparent;
+  transition: all 150ms ease;
+}
+
+.react-flow__controls-button:hover {
+  background: #27272a !important;
+  transform: scale(1.05);
+}
+
+.react-flow__controls-button svg {
+  width: 16px;
+  height: 16px;
+}
+
+/* Background pattern */
+.react-flow__background {
+  background-color: #09090b;
+}
+
+/* Node selection glow effect */
+.react-flow__node.selected {
+  filter: drop-shadow(0 0 8px rgba(99, 102, 241, 0.3));
+}
+
+/* Smooth panning */
+.react-flow__pane {
+  cursor: grab;
+}
+
+.react-flow__pane:active {
+  cursor: grabbing;
+}
+
+/* Context menu fade in */
+.context-menu {
+  animation: fade-in 150ms ease-out;
+}
+
+/* Toolbar animations */
+.toolbar-button {
+  transition: all 150ms ease;
+}
+
+.toolbar-button:hover:not(:disabled) {
+  background: #27272a;
+  transform: translateY(-1px);
+}
+
+.toolbar-button:active:not(:disabled) {
+  transform: translateY(0);
+}
+
+.toolbar-button:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+/* Draggable node item animations */
+.draggable-node {
+  transition: all 150ms ease;
+}
+
+.draggable-node:hover {
+  transform: translateX(2px);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+}
+
+/* Running state pulse */
+.running-indicator {
+  animation: pulse-subtle 1.5s ease-in-out infinite;
+}
+
+/* Smooth scrollbar */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: #18181b;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #3f3f46;
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #52525b;
 }

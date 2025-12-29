@@ -1,18 +1,12 @@
-import { useRef, useState, useCallback } from "react";
-import { useDraggable } from "@neodrag/react";
+import { useState } from "react";
 import clsx from "clsx";
 import { twMerge } from "tailwind-merge";
-import { useReactFlow } from "@xyflow/react";
 import {
-  Boxes,
-  Workflow,
-  ArrowDownToLine,
-  Settings2,
-  ArrowUpFromLine,
+  Circle,
+  Square,
+  ArrowRight,
+  GripVertical,
 } from "lucide-react";
-
-let id = 0;
-const getId = () => `dndnode_${id++}`;
 
 function cn(...inputs) {
   return twMerge(clsx(inputs));
@@ -20,71 +14,62 @@ function cn(...inputs) {
 
 /* ----------------------------- Draggable Node ----------------------------- */
 function DraggableNode({
-  className,
-  children,
   nodeType,
-  onDrop,
+  label,
+  description,
   icon: Icon,
-  gradient,
-  bgColor,
+  color,
 }) {
-  const draggableRef = useRef(null);
-  const [position, setPosition] = useState({ x: 0, y: 0 });
   const [isDragging, setIsDragging] = useState(false);
 
-  useDraggable(draggableRef, {
-    position,
-    onDrag: ({ offsetX, offsetY }) => {
-      setIsDragging(true);
-      setPosition({ x: offsetX, y: offsetY });
-    },
-    onDragEnd: ({ event }) => {
-      setIsDragging(false);
-      setPosition({ x: 0, y: 0 });
-      onDrop(nodeType, { x: event.clientX, y: event.clientY });
-    },
-  });
+  const colorStyles = {
+    blue: "text-blue-400 bg-blue-500/10 border-blue-500/20",
+    purple: "text-purple-400 bg-purple-500/10 border-purple-500/20",
+    green: "text-green-400 bg-green-500/10 border-green-500/20",
+  };
+
+  const onDragStart = (event) => {
+    setIsDragging(true);
+    event.dataTransfer.setData("application/reactflow", nodeType);
+    event.dataTransfer.effectAllowed = "move";
+  };
+
+  const onDragEnd = () => {
+    setIsDragging(false);
+  };
 
   return (
     <div
-      ref={draggableRef}
+      draggable
+      onDragStart={onDragStart}
+      onDragEnd={onDragEnd}
       className={cn(
-        "group select-none cursor-grab active:cursor-grabbing",
-        "transition-transform duration-150",
-        isDragging && "opacity-60 scale-[0.98]",
-        className
+        "group cursor-grab active:cursor-grabbing draggable-node",
+        "transition-all duration-150",
+        isDragging && "opacity-60"
       )}
-      style={{
-        zIndex: isDragging ? 9999 : "auto",
-        pointerEvents: isDragging ? "none" : "auto",
-      }}
     >
       <div
         className={cn(
-          "relative overflow-hidden rounded-xl",
-          "border border-white/10 hover:border-white/20",
-          "shadow-sm hover:shadow-lg hover:shadow-black/20",
-          "transition-colors duration-200",
-          bgColor
+          "flex items-center gap-3 p-3 rounded-lg",
+          "border border-zinc-800 bg-zinc-900",
+          "hover:bg-zinc-800/50 hover:border-zinc-700",
+          "transition-all duration-150"
         )}
       >
-        {/* subtle highlight */}
-        <div className="pointer-events-none absolute inset-0 bg-gradient-to-br from-white/10 via-transparent to-transparent opacity-0 transition-opacity duration-200 group-hover:opacity-100" />
-
-        <div className="relative flex items-center gap-4 p-4">
-          <div className="grid h-11 w-11 place-items-center rounded-lg bg-black/20 ring-1 ring-white/10">
-            <Icon className={cn("h-6 w-6", gradient)} strokeWidth={2.25} />
-          </div>
-
-          <div className="min-w-0 flex-1">
-            <div className="truncate text-sm font-semibold text-white">
-              {children}
-            </div>
-            <div className="mt-0.5 text-xs text-white/60">Drag onto canvas</div>
-          </div>
+        <div
+          className={cn(
+            "flex items-center justify-center w-9 h-9 rounded-md border",
+            colorStyles[color]
+          )}
+        >
+          <Icon className="w-4 h-4" />
         </div>
-
-        <div className="absolute inset-0 rounded-xl ring-1 ring-transparent transition group-hover:ring-white/10" />
+        <div className="flex-1 min-w-0">
+          <div className="text-sm font-medium text-zinc-200">{label}</div>
+          <div className="text-xs text-zinc-500">{description}</div>
+        </div>
+        <GripVertical className="w-4 h-4 text-zinc-600 opacity-0 group-hover:opacity-100 transition-opacity" />
       </div>
     </div>
   );
@@ -92,82 +77,31 @@ function DraggableNode({
 
 /* -------------------------------- SliderBar ------------------------------- */
 export const SliderBar = () => {
-  const { setNodes, screenToFlowPosition } = useReactFlow();
-
-  const handleNodeDrop = useCallback(
-    (nodeType, screenPosition) => {
-      const flow = document.querySelector(".react-flow");
-      const flowRect = flow?.getBoundingClientRect();
-
-      const isInFlow =
-        flowRect &&
-        screenPosition.x >= flowRect.left &&
-        screenPosition.x <= flowRect.right &&
-        screenPosition.y >= flowRect.top &&
-        screenPosition.y <= flowRect.bottom;
-
-      if (isInFlow) {
-        const position = screenToFlowPosition(screenPosition);
-
-        setNodes((nds) =>
-          nds.concat({
-            id: getId(),
-            type: nodeType,
-            position,
-            data: { label: `${nodeType} node` },
-          })
-        );
-      }
-    },
-    [setNodes, screenToFlowPosition]
-  );
-
   return (
-    <aside className="w-[320px] shrink-0 border-r border-white/10 bg-slate-950/80 backdrop-blur flex flex-col">
-      {/* Header */}
-      <div className="sticky top-0 z-10 h-14 px-4 flex items-center gap-2 border-b border-white/10 bg-slate-950/70 backdrop-blur">
-        <Boxes className="h-5 w-5 text-blue-400" />
-        <span className="text-sm font-semibold text-white">Components</span>
-      </div>
+    <div className="space-y-2">
+      <DraggableNode
+        nodeType="input"
+        label="Input"
+        description="Entry point"
+        icon={Circle}
+        color="blue"
+      />
 
-      {/* Nodes */}
-      <div className="flex-1 overflow-y-auto p-4 space-y-3">
-        <DraggableNode
-          nodeType="input"
-          onDrop={handleNodeDrop}
-          icon={ArrowDownToLine}
-          gradient="text-blue-400"
-          bgColor="bg-slate-900/60"
-        >
-          Input
-        </DraggableNode>
+      <DraggableNode
+        nodeType="default"
+        label="Process"
+        description="Transform data"
+        icon={Square}
+        color="purple"
+      />
 
-        <DraggableNode
-          nodeType="default"
-          onDrop={handleNodeDrop}
-          icon={Settings2}
-          gradient="text-purple-400"
-          bgColor="bg-slate-900/60"
-        >
-          Process
-        </DraggableNode>
-
-        <DraggableNode
-          nodeType="output"
-          onDrop={handleNodeDrop}
-          icon={ArrowUpFromLine}
-          gradient="text-emerald-400"
-          bgColor="bg-slate-900/60"
-        >
-          Output
-        </DraggableNode>
-      </div>
-
-      {/* Footer */}
-      <div className="sticky bottom-0 border-t border-white/10 bg-slate-950/70 backdrop-blur p-4 text-xs text-slate-300 flex items-center gap-2">
-        <Workflow className="h-4 w-4 text-slate-400" />
-        <span>Drag nodes into the canvas</span>
-      </div>
-    </aside>
+      <DraggableNode
+        nodeType="output"
+        label="Output"
+        description="Final result"
+        icon={ArrowRight}
+        color="green"
+      />
+    </div>
   );
 };

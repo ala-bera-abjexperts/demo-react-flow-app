@@ -1,31 +1,32 @@
 import {
   Background,
   Controls,
+  MiniMap,
   ReactFlow,
   ReactFlowProvider,
   addEdge,
   useEdgesState,
   useNodesState,
+  useReactFlow,
 } from "@xyflow/react";
 import "@xyflow/react/dist/style.css";
 import "../App.css";
 import { SliderBar } from "./sliderbar";
-import { useCallback, useRef, useState } from "react";
+import { useCallback, useRef, useState, useEffect } from "react";
 import {
   Workflow,
   Maximize2,
   Download,
   Upload,
-  Zap,
-  Circle,
-  Square,
-  ArrowRight,
   Play,
-  Grid3x3,
-  Sparkles,
-  Activity,
+  Boxes,
 } from "lucide-react";
 import { InputNode, DefaultNode, OutputNode } from "./custom-nodes";
+import { Button } from "./ui/button";
+import { Tooltip, TooltipContent, TooltipTrigger } from "./ui/tooltip";
+import { Separator } from "./ui/separator";
+import { Toolbar } from "./Toolbar";
+import { useKeyboardShortcuts } from "../hooks/useKeyboardShortcuts";
 
 const nodeTypes = {
   input: InputNode,
@@ -42,18 +43,152 @@ const initialNodes = [
   },
 ];
 
-const defaultEdgeOptions = {
-  animated: true,
-  style: {
-    strokeWidth: 2.5,
-  },
-};
-
-export const DragAndDrop = () => {
+const DragAndDropInner = () => {
   const [nodes, setNodes, onNodesChange] = useNodesState(initialNodes);
   const [edges, setEdges, onEdgesChange] = useEdgesState([]);
   const nodeIdCounter = useRef(2);
   const [isRunning, setIsRunning] = useState(false);
+  const [snapToGrid, setSnapToGrid] = useState(false);
+
+  // Undo/Redo state
+  const [history, setHistory] = useState([{ nodes: initialNodes, edges: [] }]);
+  const [historyIndex, setHistoryIndex] = useState(0);
+  const isUndoRedoRef = useRef(false);
+
+  // Save to history when nodes or edges change
+  const saveToHistory = useCallback(
+    (newNodes, newEdges) => {
+      const newHistory = history.slice(0, historyIndex + 1);
+      newHistory.push({ nodes: newNodes, edges: newEdges });
+      setHistory(newHistory);
+      setHistoryIndex(newHistory.length - 1);
+    },
+    [history, historyIndex]
+  );
+
+  // Track changes and save to history
+  useEffect(() => {
+    // Don't save if we're in the middle of undo/redo
+    if (isUndoRedoRef.current) {
+      isUndoRedoRef.current = false;
+      return;
+    }
+
+    // Don't save initial state
+    if (nodes.length === 0 && edges.length === 0) return;
+
+    const timeoutId = setTimeout(() => {
+      const currentState = history[historyIndex];
+      const hasChanged =
+        JSON.stringify(currentState?.nodes) !== JSON.stringify(nodes) ||
+        JSON.stringify(currentState?.edges) !== JSON.stringify(edges);
+
+      if (hasChanged) {
+        saveToHistory(nodes, edges);
+      }
+    }, 300); // Debounce to avoid saving too frequently
+
+    return () => clearTimeout(timeoutId);
+  }, [nodes, edges, history, historyIndex, saveToHistory]);
+
+  // Undo function
+  const undo = useCallback(() => {
+    if (historyIndex > 0) {
+      const prevState = history[historyIndex - 1];
+      setNodes(prevState.nodes);
+      setEdges(prevState.edges);
+      setHistoryIndex(historyIndex - 1);
+    }
+  }, [history, historyIndex, setNodes, setEdges]);
+
+  // Redo function
+  const redo = useCallback(() => {
+    if (historyIndex < history.length - 1) {
+      const nextState = history[historyIndex + 1];
+      setNodes(nextState.nodes);
+      setEdges(nextState.edges);
+      setHistoryIndex(historyIndex + 1);
+    }
+  }, [history, historyIndex, setNodes, setEdges]);
+
+  // Delete selected nodes/edges
+  const deleteSelected = useCallback(() => {
+    setNodes((nds) => nds.filter((node) => !node.selected));
+    setEdges((eds) => eds.filter((edge) => !edge.selected));
+  }, [setNodes, setEdges]);
+
+  // Duplicate selected nodes
+  const duplicateSelected = useCallback(() => {
+    const selectedNodes = nodes.filter((node) => node.selected);
+    if (selectedNodes.length === 0) return;
+
+    const newNodes = selectedNodes.map((node) => ({
+      ...node,
+      id: `${nodeIdCounter.current++}`,
+      position: {
+        x: node.position.x + 50,
+        y: node.position.y + 50,
+      },
+      selected: false,
+    }));
+
+    setNodes((nds) => [
+      ...nds.map((n) => ({ ...n, selected: false })),
+      ...newNodes,
+    ]);
+  }, [nodes, setNodes]);
+
+  // Select all nodes
+  const selectAll = useCallback(() => {
+    setNodes((nds) => nds.map((node) => ({ ...node, selected: true })));
+  }, [setNodes]);
+
+  // Save workflow
+  const saveWorkflow = useCallback(() => {
+    const workflow = { nodes, edges };
+    const json = JSON.stringify(workflow, null, 2);
+    const blob = new Blob([json], { type: "application/json" });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = "workflow.json";
+    link.click();
+    URL.revokeObjectURL(url);
+  }, [nodes, edges]);
+
+  // Load workflow
+  const loadWorkflow = useCallback(() => {
+    const input = document.createElement("input");
+    input.type = "file";
+    input.accept = "application/json";
+    input.onchange = (e) => {
+      const file = e.target.files[0];
+      if (!file) return;
+
+      const reader = new FileReader();
+      reader.onload = (event) => {
+        try {
+          const workflow = JSON.parse(event.target.result);
+          setNodes(workflow.nodes || []);
+          setEdges(workflow.edges || []);
+        } catch (error) {
+          console.error("Error loading workflow:", error);
+        }
+      };
+      reader.readAsText(file);
+    };
+    input.click();
+  }, [setNodes, setEdges]);
+
+  // Keyboard shortcuts
+  useKeyboardShortcuts({
+    onUndo: undo,
+    onRedo: redo,
+    onDelete: deleteSelected,
+    onDuplicate: duplicateSelected,
+    onSelectAll: selectAll,
+    onSave: saveWorkflow,
+  });
 
   const onConnect = useCallback(
     (params) => {
@@ -63,8 +198,8 @@ export const DragAndDrop = () => {
             ...params,
             animated: true,
             style: {
-              strokeWidth: 2.5,
-              stroke: "url(#edge-gradient)",
+              strokeWidth: 2,
+              stroke: "#6366f1",
             },
           },
           eds
@@ -112,192 +247,79 @@ export const DragAndDrop = () => {
     setIsRunning(!isRunning);
   };
 
+  const toggleSnapToGrid = () => {
+    setSnapToGrid(!snapToGrid);
+  };
+
   return (
     <ReactFlowProvider>
       <div className="h-screen w-screen flex bg-zinc-950 text-zinc-100 overflow-hidden">
-        {/* SVG Definitions for Gradients */}
-        <svg width="0" height="0" className="absolute">
-          <defs>
-            <linearGradient
-              id="edge-gradient"
-              x1="0%"
-              y1="0%"
-              x2="100%"
-              y2="0%"
-            >
-              <stop offset="0%" stopColor="#3b82f6" stopOpacity="0.8" />
-              <stop offset="50%" stopColor="#a855f7" stopOpacity="0.9" />
-              <stop offset="100%" stopColor="#22c55e" stopOpacity="0.8" />
-            </linearGradient>
-            <linearGradient
-              id="header-gradient"
-              x1="0%"
-              y1="0%"
-              x2="100%"
-              y2="0%"
-            >
-              <stop offset="0%" stopColor="#3b82f6" stopOpacity="0.1" />
-              <stop offset="50%" stopColor="#a855f7" stopOpacity="0.05" />
-              <stop offset="100%" stopColor="#22c55e" stopOpacity="0.1" />
-            </linearGradient>
-          </defs>
-        </svg>
-
-        {/* Sidebar */}
-        <aside className="w-[360px] border-r border-zinc-800/50 bg-gradient-to-b from-zinc-900/95 to-zinc-950/95 backdrop-blur-2xl relative">
-          {/* Ambient Glow */}
-          <div className="absolute top-0 left-0 w-full h-64 bg-gradient-to-b from-blue-500/5 via-purple-500/5 to-transparent blur-3xl pointer-events-none"></div>
-
-          <div className="relative h-full flex flex-col">
-            {/* Sidebar Header */}
-            <div className="h-20 flex items-center gap-3 px-6 border-b border-zinc-800/50 bg-gradient-to-r from-zinc-900/50 to-transparent">
-              <div className="relative">
-                <div className="absolute inset-0 bg-gradient-to-br from-blue-500 via-purple-500 to-green-500 rounded-xl blur-lg opacity-50 animate-pulse-glow"></div>
-                <div className="relative flex items-center justify-center w-11 h-11 rounded-xl bg-gradient-to-br from-blue-500 via-purple-500 to-green-500 shadow-xl overflow-hidden">
-                  <div className="absolute inset-0 bg-black/20"></div>
-                  <Workflow
-                    className="w-5 h-5 text-white relative z-10"
-                    strokeWidth={2.5}
-                  />
-                </div>
-              </div>
-              <div className="flex-1">
-                <div className="font-semibold text-zinc-100">Node Library</div>
-                <div className="text-xs text-zinc-500">
-                  Drag & drop components
-                </div>
-              </div>
-              <Sparkles className="w-4 h-4 text-zinc-600 animate-pulse" />
+        {/* Sidebar - Clean minimal design */}
+        <aside className="w-64 border-r border-zinc-800 bg-zinc-900 flex flex-col">
+          {/* Sidebar Header */}
+          <div className="h-14 flex items-center gap-3 px-4 border-b border-zinc-800">
+            <div className="flex items-center justify-center w-8 h-8 rounded-lg bg-zinc-800">
+              <Boxes className="w-4 h-4 text-zinc-400" />
             </div>
+            <span className="text-sm font-medium text-zinc-100">
+              Components
+            </span>
+          </div>
 
-            {/* Sidebar Content */}
-            <div className="flex-1 overflow-y-auto p-5">
-              <SliderBar />
+          {/* Sidebar Content */}
+          <div className="flex-1 overflow-y-auto p-3">
+            <div className="text-xs text-zinc-500 uppercase tracking-wider mb-3 px-1">
+              Nodes
             </div>
+            <SliderBar />
+          </div>
 
-            {/* Status Footer */}
-            <div className="h-24 p-5 border-t border-zinc-800/50 bg-gradient-to-t from-zinc-950/90 to-transparent backdrop-blur-xl">
-              <div className="flex items-center justify-between text-xs mb-3">
-                <div className="flex items-center gap-2">
-                  <div className="relative">
-                    <div className="absolute inset-0 bg-green-500 rounded-full blur-sm animate-pulse-glow"></div>
-                    <div className="relative w-2 h-2 rounded-full bg-green-500 shadow-sm shadow-green-500"></div>
-                  </div>
-                  <span className="text-zinc-400 font-medium">
-                    System Active
-                  </span>
-                </div>
-                <div className="flex items-center gap-1.5 px-2 py-1 rounded-md bg-zinc-800/50 border border-zinc-700/50">
-                  <Zap className="w-3 h-3 text-blue-400" />
-                  <span className="text-zinc-500 font-mono">v2.1</span>
-                </div>
-              </div>
-
-              {/* Progress Bar */}
-              <div className="relative h-1.5 bg-zinc-800/50 rounded-full overflow-hidden border border-zinc-800/50">
-                <div
-                  className="absolute inset-0 bg-gradient-to-r from-blue-500 via-purple-500 to-green-500 animate-shimmer"
-                  style={{ width: "75%" }}
-                ></div>
-              </div>
-              <div className="flex items-center justify-between mt-2 text-[10px] text-zinc-600">
-                <span>Performance</span>
-                <span className="font-mono">75%</span>
-              </div>
-            </div>
+          {/* Footer - Minimal hint */}
+          <div className="p-3 border-t border-zinc-800 text-xs text-zinc-500">
+            Drag nodes onto canvas
           </div>
         </aside>
 
         {/* Main Canvas Area */}
         <main className="flex-1 flex flex-col relative">
-          {/* Ambient Background */}
-          <div className="absolute inset-0 bg-gradient-to-br from-blue-500/5 via-purple-500/5 to-green-500/5 pointer-events-none"></div>
+          {/* Toolbar */}
+          <Toolbar
+            onUndo={undo}
+            onRedo={redo}
+            onSave={saveWorkflow}
+            onLoad={loadWorkflow}
+            onToggleSnap={toggleSnapToGrid}
+            canUndo={historyIndex > 0}
+            canRedo={historyIndex < history.length - 1}
+            snapToGrid={snapToGrid}
+          />
 
-          {/* Header */}
-          <header className="relative h-20 flex items-center justify-between px-6 border-b border-zinc-800/50 bg-zinc-900/30 backdrop-blur-2xl">
-            {/* Gradient Overlay */}
-            <div className="absolute inset-0 bg-[url('#header-gradient')] opacity-50"></div>
-
-            <div className="relative flex items-center gap-5">
-              <div className="flex items-center gap-3">
-                <span className="font-semibold text-zinc-100">
+          {/* Status Bar */}
+          <div className="h-8 flex items-center justify-between px-4 border-b border-zinc-800 bg-zinc-900/50">
+            <div className="flex items-center gap-3 text-xs text-zinc-500">
+              <div className="flex items-center gap-2">
+                <Workflow className="w-3.5 h-3.5 text-zinc-400" />
+                <span className="text-zinc-400 font-medium">
                   Workflow Builder
                 </span>
-                <div className="relative group">
-                  <div className="absolute inset-0 bg-gradient-to-r from-blue-500 to-purple-600 rounded-lg blur-md opacity-0 group-hover:opacity-50 transition-opacity"></div>
-                  <div className="relative px-2.5 py-1 rounded-lg bg-gradient-to-r from-blue-500/20 to-purple-500/20 border border-blue-500/30">
-                    <span className="text-xs text-blue-400 font-semibold">
-                      PRO
-                    </span>
-                  </div>
-                </div>
               </div>
-
-              <div className="h-6 w-px bg-zinc-800"></div>
-
-              <div className="flex items-center gap-3">
-                <div className="group relative">
-                  <div className="absolute inset-0 bg-blue-500/20 rounded-lg blur-sm opacity-0 group-hover:opacity-100 transition-opacity"></div>
-                  <div className="relative flex items-center gap-2 px-3 py-2 rounded-lg bg-zinc-800/50 border border-zinc-700/50 hover:border-blue-500/50 transition-all">
-                    <Grid3x3 className="w-3.5 h-3.5 text-blue-400" />
-                    <span className="text-xs text-zinc-300 font-semibold">
-                      {nodes.length}
-                    </span>
-                    <span className="text-xs text-zinc-500">Nodes</span>
-                  </div>
-                </div>
-
-                <div className="group relative">
-                  <div className="absolute inset-0 bg-purple-500/20 rounded-lg blur-sm opacity-0 group-hover:opacity-100 transition-opacity"></div>
-                  <div className="relative flex items-center gap-2 px-3 py-2 rounded-lg bg-zinc-800/50 border border-zinc-700/50 hover:border-purple-500/50 transition-all">
-                    <Activity className="w-3.5 h-3.5 text-purple-400" />
-                    <span className="text-xs text-zinc-300 font-semibold">
-                      {edges.length}
-                    </span>
-                    <span className="text-xs text-zinc-500">Connections</span>
-                  </div>
-                </div>
-              </div>
+              <Separator orientation="vertical" className="h-4 bg-zinc-700" />
+              <span>{nodes.length} nodes</span>
+              <span>{edges.length} connections</span>
             </div>
-
-            <div className="relative flex items-center gap-2">
-              <button className="group relative flex items-center gap-2 px-4 py-2.5 rounded-lg text-sm text-zinc-300 hover:text-white border border-zinc-800/50 hover:border-zinc-700 bg-zinc-900/50 hover:bg-zinc-800/50 transition-all overflow-hidden">
-                <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/5 to-transparent translate-x-[-100%] group-hover:translate-x-[100%] transition-transform duration-700"></div>
-                <Upload className="w-4 h-4 relative z-10" />
-                <span className="relative z-10">Import</span>
-              </button>
-
-              <button className="group relative flex items-center gap-2 px-4 py-2.5 rounded-lg text-sm text-zinc-300 hover:text-white border border-zinc-800/50 hover:border-zinc-700 bg-zinc-900/50 hover:bg-zinc-800/50 transition-all overflow-hidden">
-                <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/5 to-transparent translate-x-[-100%] group-hover:translate-x-[100%] transition-transform duration-700"></div>
-                <Download className="w-4 h-4 relative z-10" />
-                <span className="relative z-10">Export</span>
-              </button>
-
-              <div className="w-px h-7 bg-zinc-800 mx-1"></div>
-
-              <button
+            <div className="flex items-center gap-2">
+              <Button
                 onClick={handleRun}
-                className="group relative flex items-center gap-2 px-5 py-2.5 rounded-lg text-sm bg-gradient-to-r from-blue-600 via-purple-600 to-blue-600 hover:from-blue-500 hover:via-purple-500 hover:to-blue-500 text-white shadow-xl shadow-blue-500/30 hover:shadow-blue-500/50 transition-all overflow-hidden"
+                size="sm"
+                className="h-6 text-xs bg-indigo-600 hover:bg-indigo-500 text-white"
               >
-                <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent translate-x-[-100%] group-hover:translate-x-[100%] transition-transform duration-500"></div>
                 <Play
-                  className={`w-4 h-4 relative z-10 transition-transform ${
-                    isRunning ? "rotate-90 scale-110" : ""
-                  }`}
+                  className={`w-3 h-3 mr-1 ${isRunning ? "animate-spin" : ""}`}
                 />
-                <span className="relative z-10 font-semibold">
-                  {isRunning ? "Running..." : "Run"}
-                </span>
-                {isRunning && (
-                  <Sparkles className="w-3.5 h-3.5 animate-pulse relative z-10" />
-                )}
-              </button>
-
-              <button className="p-2.5 rounded-lg text-zinc-400 hover:text-white hover:bg-zinc-800/60 border border-transparent hover:border-zinc-700/50 transition-all">
-                <Maximize2 className="w-4 h-4" />
-              </button>
+                {isRunning ? "Stop" : "Run"}
+              </Button>
             </div>
-          </header>
+          </div>
 
           {/* React Flow Canvas */}
           <div
@@ -312,89 +334,68 @@ export const DragAndDrop = () => {
               onEdgesChange={onEdgesChange}
               onConnect={onConnect}
               nodeTypes={nodeTypes}
-              defaultEdgeOptions={defaultEdgeOptions}
+              defaultEdgeOptions={{
+                animated: true,
+                style: { strokeWidth: 2, stroke: "#6366f1" },
+              }}
               fitView
               className="bg-zinc-950"
               connectionLineStyle={{
-                strokeWidth: 2.5,
-                stroke: "#a855f7",
+                strokeWidth: 2,
+                stroke: "#6366f1",
               }}
               connectionLineType="smoothstep"
+              snapToGrid={snapToGrid}
+              snapGrid={[20, 20]}
+              selectionOnDrag
+              selectionMode="partial"
+              panOnDrag={[1, 2]}
+              multiSelectionKeyCode="Shift"
             >
-              <Background
-                className="opacity-[0.15]"
-                gap={24}
-                size={2}
-                color="#52525b"
-                variant="dots"
-              />
+              <Background gap={20} size={1} color="#27272a" variant="dots" />
               <Controls
-                className="!bg-zinc-900/95 !border !border-zinc-800/50 !rounded-2xl !shadow-2xl !shadow-black/50 backdrop-blur-xl !overflow-hidden [&_button]:!bg-transparent [&_button]:!border-zinc-800/50 [&_button]:!text-zinc-400 [&_button:hover]:!bg-zinc-800/50 [&_button:hover]:!text-white [&_button]:!transition-all [&_button]:!rounded-lg"
-                showInteractive={false}
+                className="!bg-zinc-900 !border !border-zinc-800 !rounded-lg !shadow-lg [&_button]:!bg-transparent [&_button]:!border-0 [&_button]:!text-zinc-400 [&_button:hover]:!bg-zinc-800 [&_button:hover]:!text-zinc-100 [&_button]:!transition-colors"
+                showInteractive
+                showZoom
+                showFitView
+              />
+              <MiniMap
+                nodeColor={(node) => {
+                  if (node.type === "input") return "#3b82f6";
+                  if (node.type === "output") return "#22c55e";
+                  return "#a855f7";
+                }}
+                nodeStrokeWidth={3}
+                nodeBorderRadius={8}
+                className="!bg-zinc-900 !border !border-zinc-800 !rounded-lg"
               />
             </ReactFlow>
 
-            {/* Canvas Overlay Hint */}
+            {/* Empty State - Clean minimal */}
             {nodes.length === 1 && (
               <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
-                <div className="text-center space-y-6 opacity-20">
-                  <div className="relative inline-block">
-                    {/* Animated Glow Rings */}
-                    <div className="absolute inset-0 animate-ping">
-                      <div className="absolute inset-[-20px] bg-gradient-to-r from-blue-500 via-purple-500 to-green-500 rounded-full blur-3xl opacity-20"></div>
-                    </div>
-                    <div className="absolute inset-0 bg-gradient-to-r from-blue-500 via-purple-500 to-green-500 blur-3xl opacity-30 animate-pulse-glow"></div>
-                    <Workflow
-                      className="w-24 h-24 mx-auto text-zinc-700 relative animate-float"
-                      strokeWidth={1.5}
-                    />
+                <div className="text-center max-w-xs">
+                  <div className="flex items-center justify-center w-12 h-12 rounded-lg bg-zinc-800 border border-zinc-700 mx-auto mb-4">
+                    <Workflow className="w-6 h-6 text-zinc-500" />
                   </div>
-                  <div className="space-y-2">
-                    <p className="text-zinc-700 font-semibold">
-                      Start Building Your Workflow
-                    </p>
-                    <p className="text-xs text-zinc-800 max-w-md">
-                      Drag nodes from the sidebar and connect them to create
-                      powerful data flows
-                    </p>
-                    <div className="flex items-center justify-center gap-2 mt-4">
-                      {[Circle, Square, ArrowRight].map((Icon, i) => (
-                        <div
-                          key={i}
-                          className="flex items-center justify-center w-8 h-8 rounded-lg bg-zinc-800/50 border border-zinc-700/50"
-                        >
-                          <Icon
-                            className="w-4 h-4 text-zinc-600"
-                            strokeWidth={2}
-                          />
-                        </div>
-                      ))}
-                    </div>
-                  </div>
+                  <p className="text-sm font-medium text-zinc-400 mb-2">
+                    Start building your workflow
+                  </p>
+                  <p className="text-xs text-zinc-600">
+                    Drag nodes from the sidebar and connect them
+                  </p>
                 </div>
               </div>
             )}
 
-            {/* Running Animation Overlay */}
+            {/* Running State - Clean minimal */}
             {isRunning && (
               <div className="absolute top-4 left-1/2 -translate-x-1/2 z-50">
-                <div className="relative">
-                  <div className="absolute inset-0 bg-gradient-to-r from-blue-500 via-purple-500 to-green-500 rounded-xl blur-lg opacity-50 animate-pulse-glow"></div>
-                  <div className="relative flex items-center gap-3 px-5 py-3 rounded-xl bg-zinc-900/95 border border-zinc-800/50 backdrop-blur-xl shadow-2xl">
-                    <div className="flex gap-1">
-                      {[...Array(3)].map((_, i) => (
-                        <div
-                          key={i}
-                          className="w-2 h-2 rounded-full bg-gradient-to-r from-blue-500 to-purple-500 animate-pulse"
-                          style={{ animationDelay: `${i * 150}ms` }}
-                        ></div>
-                      ))}
-                    </div>
-                    <span className="text-sm text-zinc-300 font-semibold">
-                      Executing Workflow...
-                    </span>
-                    <Activity className="w-4 h-4 text-purple-400 animate-pulse" />
-                  </div>
+                <div className="flex items-center gap-2 px-3 py-2 rounded-md bg-zinc-900 border border-zinc-700 shadow-lg">
+                  <div className="w-2 h-2 rounded-full bg-indigo-500 animate-pulse-subtle" />
+                  <span className="text-xs font-medium text-zinc-300">
+                    Running workflow...
+                  </span>
                 </div>
               </div>
             )}
@@ -404,3 +405,5 @@ export const DragAndDrop = () => {
     </ReactFlowProvider>
   );
 };
+
+export const DragAndDrop = DragAndDropInner;
