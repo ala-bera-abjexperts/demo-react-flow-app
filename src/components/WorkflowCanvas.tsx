@@ -1,4 +1,11 @@
-import { useCallback, useRef, useMemo, useState, useEffect, DragEvent } from "react";
+import {
+  useCallback,
+  useRef,
+  useMemo,
+  useState,
+  useEffect,
+  DragEvent,
+} from "react";
 import {
   ReactFlow,
   ReactFlowProvider,
@@ -24,11 +31,7 @@ import { useKeyboardShortcuts } from "../hooks/useKeyboardShortcuts";
 import { useHistory } from "../hooks/useHistory";
 import { usePersistence } from "../hooks/usePersistence";
 import { WorkflowNode, WorkflowEdge, NodeType } from "../types/workflow";
-import {
-  Workflow,
-  Play,
-  Boxes,
-} from "lucide-react";
+import { Workflow, Play, Boxes } from "lucide-react";
 import { Button } from "./ui/button";
 import { Separator } from "./ui/separator";
 
@@ -64,7 +67,9 @@ const WorkflowCanvasInner = () => {
     const persisted = loadState();
     if (persisted && persisted.nodes.length > 0) {
       // Update node counter to avoid ID conflicts
-      const maxId = Math.max(...persisted.nodes.map((n) => parseInt(n.id) || 0));
+      const maxId = Math.max(
+        ...persisted.nodes.map((n) => parseInt(n.id) || 0)
+      );
       nodeIdCounter.current = maxId + 1;
       return persisted;
     }
@@ -92,7 +97,10 @@ const WorkflowCanvasInner = () => {
       // Don't process changes during undo/redo
       if (history.isUndoRedo()) return;
 
-      const newNodes = applyNodeChanges(changes, history.nodes) as WorkflowNode[];
+      const newNodes = applyNodeChanges(
+        changes,
+        history.nodes
+      ) as WorkflowNode[];
 
       // Check if this is a drag event
       const isDragChange = changes.some(
@@ -127,7 +135,10 @@ const WorkflowCanvasInner = () => {
     (changes: EdgeChange[]) => {
       if (history.isUndoRedo()) return;
 
-      const newEdges = applyEdgeChanges(changes, history.edges) as WorkflowEdge[];
+      const newEdges = applyEdgeChanges(
+        changes,
+        history.edges
+      ) as WorkflowEdge[];
 
       // Commit edge deletions immediately
       const hasRemoval = changes.some((change) => change.type === "remove");
@@ -181,7 +192,9 @@ const WorkflowCanvasInner = () => {
     (event: DragEvent<HTMLDivElement>) => {
       event.preventDefault();
 
-      const type = event.dataTransfer.getData("application/reactflow") as NodeType;
+      const type = event.dataTransfer.getData(
+        "application/reactflow"
+      ) as NodeType;
       if (!type) return;
 
       // CRITICAL: Convert screen coordinates to flow coordinates
@@ -306,7 +319,9 @@ const WorkflowCanvasInner = () => {
             history.reset(workflow.nodes, workflow.edges);
 
             // Update node counter
-            const maxId = Math.max(...workflow.nodes.map((n: Node) => parseInt(n.id) || 0));
+            const maxId = Math.max(
+              ...workflow.nodes.map((n: Node) => parseInt(n.id) || 0)
+            );
             nodeIdCounter.current = maxId + 1;
           }
         } catch (error) {
@@ -342,7 +357,7 @@ const WorkflowCanvasInner = () => {
     onSave: saveWorkflow,
   });
 
-~~~  // Memoize default edge options with cyberpunk styling
+  // Memoize default edge options with cyberpunk styling
   const defaultEdgeOptions = useMemo(
     () => ({
       animated: true,
@@ -380,7 +395,7 @@ const WorkflowCanvasInner = () => {
             linear-gradient(var(--cyber-grid) 1px, transparent 1px),
             linear-gradient(90deg, var(--cyber-grid) 1px, transparent 1px)
           `,
-          backgroundSize: '40px 40px'
+          backgroundSize: "40px 40px",
         }}
       />
 
@@ -392,27 +407,33 @@ const WorkflowCanvasInner = () => {
           <div
             className="absolute left-0 top-0 bottom-0 w-1"
             style={{
-              background: 'linear-gradient(180deg, var(--cyber-cyan), var(--cyber-magenta))',
-              boxShadow: '0 0 10px var(--cyber-cyan-glow)'
+              background:
+                "linear-gradient(180deg, var(--cyber-cyan), var(--cyber-magenta))",
+              boxShadow: "0 0 10px var(--cyber-cyan-glow)",
             }}
           />
 
           <div
             className="flex items-center justify-center w-10 h-10 border-2"
             style={{
-              borderColor: 'var(--cyber-cyan)',
-              background: 'radial-gradient(circle, var(--cyber-cyan-glow), transparent)',
-              clipPath: 'polygon(30% 0%, 70% 0%, 100% 30%, 100% 70%, 70% 100%, 30% 100%, 0% 70%, 0% 30%)'
+              borderColor: "var(--cyber-cyan)",
+              background:
+                "radial-gradient(circle, var(--cyber-cyan-glow), transparent)",
+              clipPath:
+                "polygon(30% 0%, 70% 0%, 100% 30%, 100% 70%, 70% 100%, 30% 100%, 0% 70%, 0% 30%)",
             }}
           >
-            <Boxes className="w-5 h-5 text-[var(--cyber-cyan)]" strokeWidth={2.5} />
+            <Boxes
+              className="w-5 h-5 text-[var(--cyber-cyan)]"
+              strokeWidth={2.5}
+            />
           </div>
           <div className="flex-1">
             <div className="text-sm font-bold text-[var(--cyber-cyan)] uppercase tracking-widest mono">
               COMPONENTS
             </div>
             <div className="text-[10px] text-[var(--cyber-text-dim)] mono tracking-wide">
-              {'>> SYSTEM MODULES'}
+              {">> SYSTEM MODULES"}
             </div>
           </div>
         </div>
@@ -430,7 +451,12 @@ const WorkflowCanvasInner = () => {
         {/* Sidebar footer */}
         <div className="p-4 border-t-2 border-[var(--cyber-border-bright)] text-[10px] text-[var(--cyber-text-medium)] mono bg-[var(--cyber-bg-surface)]">
           <div className="flex items-center gap-2">
-            <div className="w-2 h-2 bg-[var(--cyber-cyan)] animate-neon-pulse" style={{ clipPath: 'polygon(50% 0%, 100% 50%, 50% 100%, 0% 50%)' }} />
+            <div
+              className="w-2 h-2 bg-[var(--cyber-cyan)] animate-neon-pulse"
+              style={{
+                clipPath: "polygon(50% 0%, 100% 50%, 50% 100%, 0% 50%)",
+              }}
+            />
             <span className="uppercase tracking-wider">DRAG TO DEPLOY</span>
           </div>
         </div>
@@ -456,23 +482,38 @@ const WorkflowCanvasInner = () => {
           <div
             className="absolute inset-0 opacity-5"
             style={{
-              background: 'linear-gradient(90deg, transparent, var(--cyber-cyan), transparent)',
-              animation: 'holo-shimmer 3s linear infinite'
+              background:
+                "linear-gradient(90deg, transparent, var(--cyber-cyan), transparent)",
+              animation: "holo-shimmer 3s linear infinite",
             }}
           />
 
           <div className="flex items-center gap-4 text-xs mono relative z-10">
             <div className="flex items-center gap-2">
-              <Workflow className="w-4 h-4 text-[var(--cyber-cyan)]" strokeWidth={2.5} />
-              <span className="text-[var(--cyber-cyan)] font-bold uppercase tracking-widest">WORKFLOW ENGINE</span>
+              <Workflow
+                className="w-4 h-4 text-[var(--cyber-cyan)]"
+                strokeWidth={2.5}
+              />
+              <span className="text-[var(--cyber-cyan)] font-bold uppercase tracking-widest">
+                WORKFLOW ENGINE
+              </span>
             </div>
-            <Separator orientation="vertical" className="h-5 bg-[var(--cyber-border-bright)] w-px" />
+            <Separator
+              orientation="vertical"
+              className="h-5 bg-[var(--cyber-border-bright)] w-px"
+            />
             <div className="flex items-center gap-3 text-[var(--cyber-text-medium)]">
               <span className="uppercase tracking-wide">
-                <span className="text-[var(--cyber-cyan)]">{history.nodes.length}</span> NODES
+                <span className="text-[var(--cyber-cyan)]">
+                  {history.nodes.length}
+                </span>{" "}
+                NODES
               </span>
               <span className="uppercase tracking-wide">
-                <span className="text-[var(--cyber-magenta)]">{history.edges.length}</span> LINKS
+                <span className="text-[var(--cyber-magenta)]">
+                  {history.edges.length}
+                </span>{" "}
+                LINKS
               </span>
             </div>
           </div>
@@ -482,21 +523,32 @@ const WorkflowCanvasInner = () => {
               size="sm"
               className="h-7 text-xs font-bold uppercase tracking-wider mono bg-[var(--cyber-bg-elevated)] border-2 hover:bg-[var(--cyber-bg-surface)] text-[var(--cyber-cyan)] transition-all duration-200"
               style={{
-                borderColor: isRunning ? 'var(--cyber-magenta)' : 'var(--cyber-cyan)',
+                borderColor: isRunning
+                  ? "var(--cyber-magenta)"
+                  : "var(--cyber-cyan)",
                 boxShadow: isRunning
-                  ? '0 0 20px var(--cyber-magenta-glow)'
-                  : '0 0 10px var(--cyber-cyan-glow)',
-                borderRadius: 0
+                  ? "0 0 20px var(--cyber-magenta-glow)"
+                  : "0 0 10px var(--cyber-cyan-glow)",
+                borderRadius: 0,
               }}
             >
-              <Play className={`w-3.5 h-3.5 mr-1.5 ${isRunning ? "animate-glitch" : ""}`} strokeWidth={2.5} />
+              <Play
+                className={`w-3.5 h-3.5 mr-1.5 ${
+                  isRunning ? "animate-glitch" : ""
+                }`}
+                strokeWidth={2.5}
+              />
               {isRunning ? "TERMINATE" : "EXECUTE"}
             </Button>
           </div>
         </div>
 
         {/* React Flow Canvas */}
-        <div className="relative flex-1" onDragOver={onDragOver} onDrop={onDrop}>
+        <div
+          className="relative flex-1"
+          onDragOver={onDragOver}
+          onDrop={onDrop}
+        >
           <ReactFlow
             nodes={history.nodes}
             edges={history.edges}
@@ -523,14 +575,10 @@ const WorkflowCanvasInner = () => {
               color="var(--cyber-grid)"
               variant="dots"
               style={{
-                background: 'var(--cyber-bg-void)'
+                background: "var(--cyber-bg-void)",
               }}
             />
-            <Controls
-              showInteractive
-              showZoom
-              showFitView
-            />
+            <Controls showInteractive showZoom showFitView />
             <MiniMap
               nodeColor={minimapNodeColor}
               nodeStrokeWidth={0}
@@ -553,22 +601,27 @@ const WorkflowCanvasInner = () => {
                 <div
                   className="flex items-center justify-center w-20 h-20 border-2 mx-auto mb-6 relative"
                   style={{
-                    borderColor: 'var(--cyber-cyan)',
-                    background: 'radial-gradient(circle, var(--cyber-cyan-glow), transparent)',
-                    clipPath: 'polygon(30% 0%, 70% 0%, 100% 30%, 100% 70%, 70% 100%, 30% 100%, 0% 70%, 0% 30%)',
-                    boxShadow: '0 0 30px var(--cyber-cyan-glow)'
+                    borderColor: "var(--cyber-cyan)",
+                    background:
+                      "radial-gradient(circle, var(--cyber-cyan-glow), transparent)",
+                    clipPath:
+                      "polygon(30% 0%, 70% 0%, 100% 30%, 100% 70%, 70% 100%, 30% 100%, 0% 70%, 0% 30%)",
+                    boxShadow: "0 0 30px var(--cyber-cyan-glow)",
                   }}
                 >
-                  <Workflow className="w-10 h-10 text-[var(--cyber-cyan)] animate-neon-pulse" strokeWidth={2} />
+                  <Workflow
+                    className="w-10 h-10 text-[var(--cyber-cyan)] animate-neon-pulse"
+                    strokeWidth={2}
+                  />
                 </div>
                 <p className="text-base font-bold text-[var(--cyber-cyan)] mb-3 uppercase tracking-widest mono">
                   SYSTEM READY
                 </p>
                 <p className="text-sm text-[var(--cyber-text-medium)] mono tracking-wide">
-                  {'>> DEPLOY NODES FROM SIDEBAR'}
+                  {">> DEPLOY NODES FROM SIDEBAR"}
                 </p>
                 <p className="text-xs text-[var(--cyber-text-dim)] mono mt-2 tracking-wide">
-                  {'>> ESTABLISH CONNECTIONS'}
+                  {">> ESTABLISH CONNECTIONS"}
                 </p>
               </div>
             </div>
@@ -580,8 +633,9 @@ const WorkflowCanvasInner = () => {
               <div
                 className="relative flex items-center gap-3 px-5 py-3 border-2 bg-[var(--cyber-bg-dark)]"
                 style={{
-                  borderColor: 'var(--cyber-magenta)',
-                  boxShadow: '0 0 30px var(--cyber-magenta-glow), 0 0 60px var(--cyber-magenta-glow)'
+                  borderColor: "var(--cyber-magenta)",
+                  boxShadow:
+                    "0 0 30px var(--cyber-magenta-glow), 0 0 60px var(--cyber-magenta-glow)",
                 }}
               >
                 {/* Corner accents */}
@@ -593,8 +647,8 @@ const WorkflowCanvasInner = () => {
                 <div
                   className="w-3 h-3 bg-[var(--cyber-magenta)] animate-glitch"
                   style={{
-                    clipPath: 'polygon(50% 0%, 100% 50%, 50% 100%, 0% 50%)',
-                    boxShadow: '0 0 10px var(--cyber-magenta-glow)'
+                    clipPath: "polygon(50% 0%, 100% 50%, 50% 100%, 0% 50%)",
+                    boxShadow: "0 0 10px var(--cyber-magenta-glow)",
                   }}
                 />
                 <span className="text-xs font-bold text-[var(--cyber-magenta)] uppercase tracking-widest mono">
@@ -608,7 +662,7 @@ const WorkflowCanvasInner = () => {
                       className="w-1 h-4 bg-[var(--cyber-magenta)] opacity-60"
                       style={{
                         animation: `data-stream 1s ease-in-out infinite`,
-                        animationDelay: `${i * 0.2}s`
+                        animationDelay: `${i * 0.2}s`,
                       }}
                     />
                   ))}
